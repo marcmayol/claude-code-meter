@@ -1,0 +1,53 @@
+name: Publish to PyPI
+
+# Publica en PyPI automáticamente cada vez que se crea un Release en GitHub.
+# Usa Trusted Publishing (OIDC): NO necesita tokens ni secrets.
+# Requisito único (una vez): configurar el "trusted publisher" en PyPI
+#   https://pypi.org/manage/account/publishing/  con:
+#     Project name:    claude-code-meter
+#     Owner:           marcmayol
+#     Repository:      claude-code-meter
+#     Workflow name:   publish.yml
+#     Environment:     pypi
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Build sdist and wheel
+        run: |
+          python -m pip install --upgrade build
+          python -m build
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write        # necesario para Trusted Publishing (OIDC)
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
