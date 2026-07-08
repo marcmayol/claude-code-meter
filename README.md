@@ -51,19 +51,29 @@ the numbers ~100× as the context is resent. It measures real work:
 
 ## Install
 
+### Option A — Download the `.exe` (no Python needed)
+
+Download the latest
+**[`claude-code-meter.exe`](https://github.com/marcmayol/claude-code-meter/releases/latest/download/claude-code-meter.exe)**
+from the [Releases](https://github.com/marcmayol/claude-code-meter/releases) page
+and double-click it. It shows up in the taskbar right away. To launch a different
+style, run it from a terminal: `claude-code-meter.exe tray` (or `panel`).
+
+### Option B — pip (needs Python 3.9+)
+
 ```bash
 pip install claude-code-meter
 ```
 
-That pulls in the dependencies (Pillow, pystray) and adds a `claude-code-meter`
-command. Config and the generated logo are stored in `%APPDATA%\ClaudeCodeMeter`.
+Adds the `claude-code-meter` command and pulls in the dependencies (Pillow,
+pystray). Config and the generated logo live in `%APPDATA%\ClaudeCodeMeter`.
 
 <sub>Or from source: `git clone … && cd claude-code-meter && pip install -e .`</sub>
 
 ## Usage
 
-One command launches the style you choose. **You don't need to run several
-things** — pick one.
+Pick **one** style. With the `.exe`, just double-click it (that's the `bar`
+style) or run `claude-code-meter.exe tray|panel`. If you installed with pip:
 
 ```bash
 claude-code-meter          # taskbar (default, recommended)
@@ -91,15 +101,17 @@ your own `config.json` from `config.example.json`:
 ### Auto-start (Windows)
 
 To start it on boot, put a shortcut in the Startup folder (`Win+R` →
-`shell:startup`) pointing to the installed command:
+`shell:startup`):
 
-```
-Target:    …\Scripts\claude-code-meter.exe
-Arguments: bar
-```
+- **Downloaded `.exe`:** point the shortcut straight to `claude-code-meter.exe`.
+- **pip install:** point it to the installed command with `bar` as argument:
+  ```
+  Target:    …\Scripts\claude-code-meter.exe
+  Arguments: bar
+  ```
 
-(`claude-code-meter` is a GUI script, so it runs without a console window. The
-repo also ships `Iniciar Meter.vbs`, which runs `pythonw -m claude_code_meter.main bar`.)
+Both run without a console window. The repo also ships `Iniciar Meter.vbs`,
+which runs `pythonw -m claude_code_meter.main bar`.
 
 ## How the bar version works
 
