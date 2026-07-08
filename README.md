@@ -1,5 +1,5 @@
 <!-- Language selector -->
-**English** · [Español](README.es.md)
+**English** · [Español](https://github.com/marcmayol/claude-code-meter/blob/main/README.es.md)
 
 # Claude Code Meter
 
@@ -7,7 +7,7 @@ A **[Claude Code](https://claude.com/claude-code) token-usage meter** for Window
 It reads Claude Code's local session logs and shows how much you've spent
 **today / this week / this month**, compared against a target you set yourself.
 
-![Claude Code Meter embedded in the Windows taskbar](assets/screenshot.png)
+![Claude Code Meter embedded in the Windows taskbar](https://raw.githubusercontent.com/marcmayol/claude-code-meter/main/assets/screenshot.png)
 
 > The figures (`D`ay · `W`eek · `M`onth) live inside the taskbar, next to the
 > clock. Each percentage is colored by level: 🟢 < 70 % · 🟡 < 90 % · 🔴 ≥ 90 %.
@@ -48,24 +48,30 @@ the numbers ~100× as the context is resent. It measures real work:
 
 - Windows 10/11
 - Python 3.9+ (with `tkinter`, included in the official Python installer)
-- Dependencies: `pip install -r requirements.txt`
-  - `bar.py` needs **Pillow** (it draws the logo).
-  - `tray.py` needs **Pillow** and **pystray**.
-  - `meter.py` needs nothing extra.
+
+## Install
+
+```bash
+pip install claude-code-meter
+```
+
+That pulls in the dependencies (Pillow, pystray) and adds a `claude-code-meter`
+command. Config and the generated logo are stored in `%APPDATA%\ClaudeCodeMeter`.
+
+<sub>Or from source: `git clone … && cd claude-code-meter && pip install -e .`</sub>
 
 ## Usage
 
-A single entry point, `main.py`, launches the style you choose. **You don't need
-to run several files** — pick one.
+One command launches the style you choose. **You don't need to run several
+things** — pick one.
 
 ```bash
-python main.py         # taskbar (default, recommended)
-python main.py tray    # system-tray icon
-python main.py panel   # floating panel in the corner
+claude-code-meter          # taskbar (default, recommended)
+claude-code-meter tray     # system-tray icon
+claude-code-meter panel    # floating panel in the corner
 ```
 
-(You can also launch each style directly with `python bar.py`, `python tray.py`
-or `python meter.py`, but `main.py` is the recommended way.)
+(Equivalent: `python -m claude_code_meter.main [bar|tray|panel]`.)
 
 ### Adjusting the targets
 
@@ -84,9 +90,16 @@ your own `config.json` from `config.example.json`:
 
 ### Auto-start (Windows)
 
-`Iniciar Meter.vbs` launches the meter (bar style) without a console window. To
-start it on boot, create a shortcut to that `.vbs` in the Startup folder
-(`Win+R` → `shell:startup`).
+To start it on boot, put a shortcut in the Startup folder (`Win+R` →
+`shell:startup`) pointing to the installed command:
+
+```
+Target:    …\Scripts\claude-code-meter.exe
+Arguments: bar
+```
+
+(`claude-code-meter` is a GUI script, so it runs without a console window. The
+repo also ships `Iniciar Meter.vbs`, which runs `pythonw -m claude_code_meter.main bar`.)
 
 ## How the bar version works
 

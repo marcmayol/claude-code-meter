@@ -1,4 +1,4 @@
-' Lanza las cifras incrustadas en la barra de tareas, sin ventana de consola.
+' Autoarranque sin ventana de consola (estilo barra).
+' Requiere haber instalado el paquete:  pip install claude-code-meter
 Set sh = CreateObject("WScript.Shell")
-sh.CurrentDirectory = "C:\Users\marcm\ClaudeCodeMeter"
-sh.Run "pythonw.exe ""C:\Users\marcm\ClaudeCodeMeter\main.py"" bar", 0, False
+sh.Run "pythonw.exe -m claude_code_meter.main bar", 0, False

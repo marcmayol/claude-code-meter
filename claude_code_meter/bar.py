@@ -43,8 +43,11 @@ def make_claude_logo(size, path, color=(217, 119, 87)):
     d.ellipse([cx - c, cy - c, cx + c, cy + c], fill=color + (255,))
     img.resize((size, size), Image.LANCZOS).save(path)
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import meter  # Reader, sum_period, days_of_week/month, fmt, load_cfg, CONFIG, colores
+try:
+    from . import meter  # instalado como paquete
+except ImportError:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import meter          # ejecución directa (python bar.py)
 
 user32 = ctypes.windll.user32
 for fn, res, args in [
@@ -124,7 +127,7 @@ class Bar(tk.Tk):
         self.row = row
         # logo de Claude (sunburst) escalado al alto del texto
         lh = int(self.fb.metrics("linespace") * 1.15)
-        logo_path = os.path.join(BASE_DIR, "logo.png")
+        logo_path = os.path.join(meter.data_dir(), "logo.png")
         try:
             make_claude_logo(lh, logo_path)
             self.logo = tk.PhotoImage(file=logo_path)

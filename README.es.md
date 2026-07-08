@@ -1,5 +1,5 @@
 <!-- Selector de idioma -->
-[English](README.md) · **Español**
+[English](https://github.com/marcmayol/claude-code-meter/blob/main/README.md) · **Español**
 
 # Claude Code Meter
 
@@ -7,7 +7,7 @@ Un medidor del **consumo de tokens de [Claude Code](https://claude.com/claude-co
 Lee los registros locales de sesiones de Claude Code y muestra cuánto llevas
 gastado **hoy / esta semana / este mes**, comparado con un objetivo que pones tú.
 
-![Claude Code Meter integrado en la barra de tareas de Windows](assets/screenshot.png)
+![Claude Code Meter integrado en la barra de tareas de Windows](https://raw.githubusercontent.com/marcmayol/claude-code-meter/main/assets/screenshot.png)
 
 > Las cifras (`D`ía · `S`emana · `M`es) viven dentro de la barra de tareas, junto al
 > reloj. Cada porcentaje se colorea según su nivel: 🟢 < 70 % · 🟡 < 90 % · 🔴 ≥ 90 %.
@@ -47,24 +47,30 @@ cifras x100 al reenviar el contexto. Mide el trabajo real: `input + output + cac
 
 - Windows 10/11
 - Python 3.9+ (con `tkinter`, incluido en el instalador oficial de Python)
-- Dependencias: `pip install -r requirements.txt`
-  - `bar.py` necesita **Pillow** (dibuja el logo).
-  - `tray.py` necesita **Pillow** y **pystray**.
-  - `meter.py` no necesita nada externo.
+
+## Instalación
+
+```bash
+pip install claude-code-meter
+```
+
+Instala las dependencias (Pillow, pystray) y añade el comando `claude-code-meter`.
+La configuración y el logo generado se guardan en `%APPDATA%\ClaudeCodeMeter`.
+
+<sub>O desde el código: `git clone … && cd claude-code-meter && pip install -e .`</sub>
 
 ## Uso
 
-Un único punto de entrada, `main.py`, lanza el estilo que elijas. **No hay que
-ejecutar varios archivos**: escoge uno.
+Un solo comando lanza el estilo que elijas. **No hay que ejecutar varias cosas**:
+escoge uno.
 
 ```bash
-python main.py         # barra de tareas (por defecto, recomendado)
-python main.py tray    # icono en la bandeja del sistema
-python main.py panel   # panel flotante en la esquina
+claude-code-meter          # barra de tareas (por defecto, recomendado)
+claude-code-meter tray     # icono en la bandeja del sistema
+claude-code-meter panel    # panel flotante en la esquina
 ```
 
-(También puedes lanzar cada estilo directamente con `python bar.py`, `python tray.py`
-o `python meter.py`, pero `main.py` es la forma recomendada.)
+(Equivalente: `python -m claude_code_meter.main [bar|tray|panel]`.)
 
 ### Ajustar los objetivos
 
@@ -83,9 +89,16 @@ tu `config.json` a partir de `config.example.json`:
 
 ### Arranque automático (Windows)
 
-`Iniciar Meter.vbs` lanza el medidor (estilo barra) sin ventana de consola. Para
-que arranque al encender, crea un acceso directo a ese `.vbs` en la carpeta de
-Inicio (`Win+R` → `shell:startup`).
+Para que arranque al encender, pon un acceso directo en la carpeta de Inicio
+(`Win+R` → `shell:startup`) apuntando al comando instalado:
+
+```
+Destino:    …\Scripts\claude-code-meter.exe
+Argumentos: bar
+```
+
+(`claude-code-meter` es un GUI script, así que arranca sin ventana de consola. El
+repo también incluye `Iniciar Meter.vbs`, que ejecuta `pythonw -m claude_code_meter.main bar`.)
 
 ## Cómo funciona la versión de barra
 

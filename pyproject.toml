@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "claude-code-meter"
+version = "0.1.0"
+description = "A Claude Code token-usage meter for the Windows taskbar"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Marc Mayol Orell", email = "marcmayolorell@gmail.com" }]
+keywords = ["claude", "claude-code", "tokens", "usage", "taskbar", "windows", "meter"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Win32 (MS Windows)",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Topic :: Utilities",
+]
+dependencies = ["Pillow>=10.0", "pystray>=0.19"]
+
+[project.urls]
+Homepage = "https://github.com/marcmayol/claude-code-meter"
+Repository = "https://github.com/marcmayol/claude-code-meter"
+Issues = "https://github.com/marcmayol/claude-code-meter/issues"
+
+# App gráfica: gui-scripts genera un lanzador sin ventana de consola en Windows.
+[project.gui-scripts]
+claude-code-meter = "claude_code_meter.main:main"
+
+[tool.setuptools]
+packages = ["claude_code_meter"]

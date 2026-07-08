@@ -19,8 +19,22 @@ try:
 except Exception:
     ctypes = None
 
+def data_dir():
+    """Carpeta de datos del usuario (config.json, logo.png).
+
+    Al instalarse por pip el paquete vive en site-packages (solo lectura),
+    así que el estado se guarda en %APPDATA%\\ClaudeCodeMeter (o ~ como fallback).
+    """
+    base = os.environ.get("APPDATA") or os.path.expanduser("~")
+    d = os.path.join(base, "ClaudeCodeMeter")
+    try:
+        os.makedirs(d, exist_ok=True)
+    except OSError:
+        d = os.path.dirname(os.path.abspath(__file__))
+    return d
+
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
-CONFIG     = os.path.join(BASE_DIR, "config.json")
+CONFIG     = os.path.join(data_dir(), "config.json")
 PROJECTS   = os.path.join(os.path.expanduser("~"), ".claude", "projects")
 
 # ---- Colores (tema oscuro, integra con barra de tareas) -------------------

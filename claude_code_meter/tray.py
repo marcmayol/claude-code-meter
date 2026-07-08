@@ -9,8 +9,11 @@ Reutiliza la lógica de lectura de meter.py. Requiere pystray + Pillow.
 import os, sys, threading, time, webbrowser
 from datetime import datetime
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import meter  # Reader, sum_period, days_of_week/month, fmt, load_cfg/save_cfg, CONFIG
+try:
+    from . import meter  # instalado como paquete
+except ImportError:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import meter          # ejecución directa (python tray.py)
 
 from PIL import Image, ImageDraw, ImageFont
 import pystray

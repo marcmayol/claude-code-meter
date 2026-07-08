@@ -9,9 +9,11 @@ logo_preview.png
 *.log
 sample_*.png
 
-# Python
+# Python / empaquetado
 __pycache__/
 *.py[cod]
 *.egg-info/
+build/
+dist/
 .venv/
 venv/
