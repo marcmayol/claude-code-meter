@@ -1,0 +1,8 @@
+{
+  "daily_budget": null,
+  "weekly_budget": 10000000,
+  "monthly_budget": 60000000,
+  "count_cache_read": false,
+  "refresh_sec": 60,
+  "icon_metric": "month_pct"
+}

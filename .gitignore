@@ -1,0 +1,17 @@
+# Estado local del usuario (posición de ventana, objetivos personales)
+config.json
+
+# Recursos generados en tiempo de ejecución
+logo.png
+logo_preview.png
+
+# Temporales
+*.log
+sample_*.png
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/

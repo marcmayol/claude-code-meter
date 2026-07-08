@@ -1,0 +1,5 @@
+# Solo la versión de icono de bandeja (tray.py) necesita pystray.
+# El logo de la versión de barra (bar.py) usa Pillow.
+# tkinter viene incluido con Python en Windows.
+Pillow>=10.0
+pystray>=0.19
