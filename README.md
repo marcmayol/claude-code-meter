@@ -4,6 +4,12 @@ Un medidor del **consumo de tokens de [Claude Code](https://claude.com/claude-co
 Lee los registros locales de sesiones de Claude Code y muestra cuánto llevas
 gastado **hoy / esta semana / este mes**, comparado con un objetivo que pones tú.
 
+![Claude Code Meter integrado en la barra de tareas de Windows](assets/screenshot.png)
+
+> Las cifras (`D`ía · `S`emana · `M`es) viven dentro de la barra de tareas, junto al
+> reloj. Cada porcentaje se colorea según su nivel: 🟢 < 70 % · 🟡 < 90 % · 🔴 ≥ 90 %.
+> En Windows en inglés las etiquetas se muestran como `D` · `W` · `M`.
+
 Incluye tres presentaciones distintas; usa la que prefieras:
 
 | Archivo     | Qué es | Aspecto |

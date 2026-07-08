@@ -71,6 +71,16 @@ FG    = "#f0f0f0"
 MUTED = "#9a9a9a"
 ACCENT = "#d97757"
 
+def is_spanish_ui():
+    """True si el idioma de Windows es español (para D/S/M vs D/W/M)."""
+    try:
+        buf = ctypes.create_unicode_buffer(85)
+        ctypes.windll.kernel32.GetUserDefaultLocaleName(buf, 85)
+        return buf.value.lower().startswith("es")
+    except Exception:
+        return False
+
+
 def taskbar_hwnd():
     return user32.FindWindowW("Shell_TrayWnd", None)
 
@@ -127,8 +137,10 @@ class Bar(tk.Tk):
             v = tk.Label(row, text="—", fg=FG, bg=BG, font=self.fb)
             v.pack(side="left", padx=(2, 10))
             return v
+        # etiquetas según idioma de Windows: es -> D/S/M, otro -> D/W/M
+        wk = "S" if is_spanish_ui() else "W"
         self.vd = block("D")
-        self.vs = block("S")
+        self.vs = block(wk)
         self.vm = block("M")
 
         # menú contextual para salir / ajustar
