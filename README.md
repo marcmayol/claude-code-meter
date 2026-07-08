@@ -10,13 +10,14 @@ gastado **hoy / esta semana / este mes**, comparado con un objetivo que pones t�
 > reloj. Cada porcentaje se colorea según su nivel: 🟢 < 70 % · 🟡 < 90 % · 🔴 ≥ 90 %.
 > En Windows en inglés las etiquetas se muestran como `D` · `W` · `M`.
 
-Incluye tres presentaciones distintas; usa la que prefieras:
+Incluye **tres presentaciones del mismo medidor**. Eliges **una** (no se ejecutan
+a la vez: muestran los mismos datos de tres formas distintas):
 
-| Archivo     | Qué es | Aspecto |
-|-------------|--------|---------|
-| **`bar.py`**  | Cifras **dentro de la barra de tareas**, junto al reloj | `✳ D 77% · S 62% · M 63%` |
-| `tray.py`   | **Icono en la bandeja del sistema** con el dato dibujado y el detalle en el tooltip | `63%` |
-| `meter.py`  | **Panel flotante** en la esquina, con barras de progreso | recuadro con HOY/SEM/MES |
+| Estilo   | Qué es | Aspecto |
+|----------|--------|---------|
+| **barra** (`bar.py`)  | Cifras **dentro de la barra de tareas**, junto al reloj | `✳ D 77% · S 62% · M 63%` |
+| **tray** (`tray.py`)  | **Icono en la bandeja del sistema** con el dato dibujado y el detalle en el tooltip | `63%` |
+| **panel** (`meter.py`) | **Panel flotante** en la esquina, con barras de progreso | recuadro con HOY/SEM/MES |
 
 `D` = hoy · `S` = semana · `M` = mes, cada uno en **% de su objetivo**.
 Los colores cambian solos: 🟢 < 70 % · 🟡 < 90 % · 🔴 ≥ 90 %.
@@ -50,14 +51,17 @@ cifras x100 al reenviar el contexto. Mide el trabajo real: `input + output + cac
 
 ## Uso
 
+Un único punto de entrada, `main.py`, lanza el estilo que elijas. **No hay que
+ejecutar varios archivos**: escoge uno.
+
 ```bash
-python bar.py      # cifras en la barra de tareas (recomendado)
-python tray.py     # icono en la bandeja
-python meter.py    # panel flotante
+python main.py         # barra de tareas (por defecto, recomendado)
+python main.py tray    # icono en la bandeja del sistema
+python main.py panel   # panel flotante en la esquina
 ```
 
-En la versión de barra, si un icono nuevo aparece oculto tras la flecha `^`,
-no aplica: `bar.py` no usa la bandeja, se dibuja directamente sobre la barra.
+(También puedes lanzar cada estilo directamente con `python bar.py`, `python tray.py`
+o `python meter.py`, pero `main.py` es la forma recomendada.)
 
 ### Ajustar los objetivos
 
@@ -76,9 +80,9 @@ tu `config.json` a partir de `config.example.json`:
 
 ### Arranque automático (Windows)
 
-`Iniciar Meter.vbs` lanza `bar.py` sin ventana de consola. Para que arranque al
-encender, crea un acceso directo a ese `.vbs` en la carpeta de Inicio
-(`Win+R` → `shell:startup`).
+`Iniciar Meter.vbs` lanza el medidor (estilo barra) sin ventana de consola. Para
+que arranque al encender, crea un acceso directo a ese `.vbs` en la carpeta de
+Inicio (`Win+R` → `shell:startup`).
 
 ## Cómo funciona la versión de barra
 
