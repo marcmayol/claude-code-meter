@@ -1,96 +1,100 @@
+<!-- Language selector -->
+**English** · [Español](README.es.md)
+
 # Claude Code Meter
 
-Un medidor del **consumo de tokens de [Claude Code](https://claude.com/claude-code)** para Windows.
-Lee los registros locales de sesiones de Claude Code y muestra cuánto llevas
-gastado **hoy / esta semana / este mes**, comparado con un objetivo que pones tú.
+A **[Claude Code](https://claude.com/claude-code) token-usage meter** for Windows.
+It reads Claude Code's local session logs and shows how much you've spent
+**today / this week / this month**, compared against a target you set yourself.
 
-![Claude Code Meter integrado en la barra de tareas de Windows](assets/screenshot.png)
+![Claude Code Meter embedded in the Windows taskbar](assets/screenshot.png)
 
-> Las cifras (`D`ía · `S`emana · `M`es) viven dentro de la barra de tareas, junto al
-> reloj. Cada porcentaje se colorea según su nivel: 🟢 < 70 % · 🟡 < 90 % · 🔴 ≥ 90 %.
-> En Windows en inglés las etiquetas se muestran como `D` · `W` · `M`.
+> The figures (`D`ay · `W`eek · `M`onth) live inside the taskbar, next to the
+> clock. Each percentage is colored by level: 🟢 < 70 % · 🟡 < 90 % · 🔴 ≥ 90 %.
+> On a Spanish Windows the labels show as `D` · `S` · `M` (Día/Semana/Mes).
 
-Incluye **tres presentaciones del mismo medidor**. Eliges **una** (no se ejecutan
-a la vez: muestran los mismos datos de tres formas distintas):
+It ships **three presentations of the same meter**. You pick **one** (they don't
+run at the same time — they show the same data in different ways):
 
-| Estilo   | Qué es | Aspecto |
-|----------|--------|---------|
-| **barra** (`bar.py`)  | Cifras **dentro de la barra de tareas**, junto al reloj | `✳ D 77% · S 62% · M 63%` |
-| **tray** (`tray.py`)  | **Icono en la bandeja del sistema** con el dato dibujado y el detalle en el tooltip | `63%` |
-| **panel** (`meter.py`) | **Panel flotante** en la esquina, con barras de progreso | recuadro con HOY/SEM/MES |
+| Style   | What it is | Looks like |
+|---------|------------|------------|
+| **bar** (`bar.py`)   | Figures **inside the taskbar**, next to the clock | `✳ D 77% · W 62% · M 63%` |
+| **tray** (`tray.py`) | **System-tray icon** with the value drawn on it and the detail in the tooltip | `63%` |
+| **panel** (`meter.py`) | **Floating panel** in the corner, with progress bars | box with TODAY/WEEK/MONTH |
 
-`D` = hoy · `S` = semana · `M` = mes, cada uno en **% de su objetivo**.
-Los colores cambian solos: 🟢 < 70 % · 🟡 < 90 % · 🔴 ≥ 90 %.
+`D` = today · `W` = week · `M` = month, each as a **% of its target**.
+Colors update on their own: 🟢 < 70 % · 🟡 < 90 % · 🔴 ≥ 90 %.
 
 ---
 
-## ⚠️ Qué mide (y qué no)
+## ⚠️ What it measures (and what it doesn't)
 
-- ✅ Solo el consumo de **Claude Code ejecutándose en este ordenador**, leyendo
+- ✅ Only the usage of **Claude Code running on this computer**, reading
   `~/.claude/projects/**/*.jsonl`.
-- ❌ **No** mide Claude en la web/app, ni la API, ni otros ordenadores.
-- ❌ **No** es el límite real de tu suscripción: ese dato lo controla el servidor
-  de Anthropic y no se guarda en local (solo se ve con `/usage` dentro de Claude Code).
+- ❌ It does **not** measure Claude on the web/app, the API, or other computers.
+- ❌ It is **not** your real subscription limit: that number lives on Anthropic's
+  servers and isn't stored locally (you only see it with `/usage` inside Claude Code).
 
-Por eso "lo que queda" se calcula contra un **objetivo personal** que defines tú,
-no contra el límite del plan.
+That's why "what's left" is computed against a **personal target** you define,
+not against the plan's limit.
 
-Por defecto **no cuenta la relectura de caché** (`cache_read`), que dispararía las
-cifras x100 al reenviar el contexto. Mide el trabajo real: `input + output + cache_write`.
+By default it **does not count cache reads** (`cache_read`), which would inflate
+the numbers ~100× as the context is resent. It measures real work:
+`input + output + cache_write`.
 
 ---
 
-## Requisitos
+## Requirements
 
 - Windows 10/11
-- Python 3.9+ (con `tkinter`, incluido en el instalador oficial de Python)
-- Dependencias: `pip install -r requirements.txt`
-  - `bar.py` necesita **Pillow** (dibuja el logo).
-  - `tray.py` necesita **Pillow** y **pystray**.
-  - `meter.py` no necesita nada externo.
+- Python 3.9+ (with `tkinter`, included in the official Python installer)
+- Dependencies: `pip install -r requirements.txt`
+  - `bar.py` needs **Pillow** (it draws the logo).
+  - `tray.py` needs **Pillow** and **pystray**.
+  - `meter.py` needs nothing extra.
 
-## Uso
+## Usage
 
-Un único punto de entrada, `main.py`, lanza el estilo que elijas. **No hay que
-ejecutar varios archivos**: escoge uno.
+A single entry point, `main.py`, launches the style you choose. **You don't need
+to run several files** — pick one.
 
 ```bash
-python main.py         # barra de tareas (por defecto, recomendado)
-python main.py tray    # icono en la bandeja del sistema
-python main.py panel   # panel flotante en la esquina
+python main.py         # taskbar (default, recommended)
+python main.py tray    # system-tray icon
+python main.py panel   # floating panel in the corner
 ```
 
-(También puedes lanzar cada estilo directamente con `python bar.py`, `python tray.py`
-o `python meter.py`, pero `main.py` es la forma recomendada.)
+(You can also launch each style directly with `python bar.py`, `python tray.py`
+or `python meter.py`, but `main.py` is the recommended way.)
 
-### Ajustar los objetivos
+### Adjusting the targets
 
-Clic derecho sobre las cifras → **Ajustar objetivo** (abre `config.json`), o crea
-tu `config.json` a partir de `config.example.json`:
+Right-click on the figures → **Adjust target** (opens `config.json`), or create
+your own `config.json` from `config.example.json`:
 
 ```json
 {
-  "daily_budget": null,          // objetivo diario; null = semanal / 7
-  "weekly_budget": 10000000,     // tokens/semana
-  "monthly_budget": 60000000,    // tokens/mes
-  "count_cache_read": false,     // true = incluir relectura de caché
+  "daily_budget": null,          // daily target; null = weekly / 7
+  "weekly_budget": 10000000,     // tokens/week
+  "monthly_budget": 60000000,    // tokens/month
+  "count_cache_read": false,     // true = include cache reads
   "refresh_sec": 60
 }
 ```
 
-### Arranque automático (Windows)
+### Auto-start (Windows)
 
-`Iniciar Meter.vbs` lanza el medidor (estilo barra) sin ventana de consola. Para
-que arranque al encender, crea un acceso directo a ese `.vbs` en la carpeta de
-Inicio (`Win+R` → `shell:startup`).
+`Iniciar Meter.vbs` launches the meter (bar style) without a console window. To
+start it on boot, create a shortcut to that `.vbs` in the Startup folder
+(`Win+R` → `shell:startup`).
 
-## Cómo funciona la versión de barra
+## How the bar version works
 
-Windows 11 repinta la barra de tareas por encima de las ventanas insertadas con
-`SetParent`, así que `bar.py` usa una ventana **topmost** colocada por coordenadas
-de pantalla justo a la izquierda del reloj (`TrayNotifyWnd`) y re-elevada cada
-0,7 s. Misma idea que TrafficMonitor / XMeters.
+Windows 11 repaints the taskbar on top of windows inserted with `SetParent`, so
+`bar.py` uses a **topmost** window placed by screen coordinates just left of the
+clock (`TrayNotifyWnd`) and re-raised every 0.7 s. Same idea as
+TrafficMonitor / XMeters.
 
-## Licencia
+## License
 
-MIT — ver [`LICENSE`](LICENSE).
+MIT — see [`LICENSE`](LICENSE).
