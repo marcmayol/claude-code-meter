@@ -59,6 +59,10 @@ for fn, res, args in [
     ("SetWindowPos", wintypes.BOOL, [wintypes.HWND, wintypes.HWND, ctypes.c_int,
                                      ctypes.c_int, ctypes.c_int, ctypes.c_int, wintypes.UINT]),
     ("GetAncestor", wintypes.HWND, [wintypes.HWND, wintypes.UINT]),
+    ("GetForegroundWindow", wintypes.HWND, []),
+    ("GetClassNameW", ctypes.c_int, [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]),
+    ("MonitorFromWindow", wintypes.HANDLE, [wintypes.HWND, wintypes.DWORD]),
+    ("GetMonitorInfoW", wintypes.BOOL, [wintypes.HANDLE, ctypes.c_void_p]),
 ]:
     f = getattr(user32, fn); f.restype = res; f.argtypes = args
 
@@ -68,6 +72,36 @@ HWND_TOPMOST = -1
 SWP_NOACTIVATE = 0x0010
 SWP_SHOWWINDOW = 0x0040
 SWP_NOSIZE = 0x0001
+MONITOR_DEFAULTTONEAREST = 2
+
+
+class MONITORINFO(ctypes.Structure):
+    _fields_ = [("cbSize", wintypes.DWORD), ("rcMonitor", wintypes.RECT),
+                ("rcWork", wintypes.RECT), ("dwFlags", wintypes.DWORD)]
+
+
+def is_fullscreen_active():
+    """True si la ventana en primer plano ocupa TODO el monitor (peli/juego a
+    pantalla completa). No cuenta el escritorio, la shell ni ventanas maximizadas
+    normales (esas respetan el área de trabajo y dejan ver la barra)."""
+    fg = user32.GetForegroundWindow()
+    if not fg:
+        return False
+    buf = ctypes.create_unicode_buffer(64)
+    user32.GetClassNameW(fg, buf, 64)
+    if buf.value in ("WorkerW", "Progman", "Shell_TrayWnd", "Shell_SecondaryTrayWnd"):
+        return False
+    r = wintypes.RECT()
+    if not user32.GetWindowRect(fg, ctypes.byref(r)):
+        return False
+    mon = user32.MonitorFromWindow(fg, MONITOR_DEFAULTTONEAREST)
+    mi = MONITORINFO()
+    mi.cbSize = ctypes.sizeof(MONITORINFO)
+    if not user32.GetMonitorInfoW(mon, ctypes.byref(mi)):
+        return False
+    m = mi.rcMonitor
+    return (r.left <= m.left and r.top <= m.top
+            and r.right >= m.right and r.bottom >= m.bottom)
 
 BG    = "#000000"   # negro para fundir con la barra oscura
 FG    = "#f0f0f0"
@@ -175,6 +209,7 @@ class Bar(tk.Tk):
     def _embed(self):
         self.update_idletasks()
         self.hwnd = user32.GetAncestor(self.winfo_id(), GA_ROOT)
+        self._hidden = False
         self._reposition()
         self.after(700, self._keep)
 
@@ -198,8 +233,17 @@ class Bar(tk.Tk):
                             SWP_NOACTIVATE | SWP_SHOWWINDOW)
 
     def _keep(self):
+        # ocultar sobre apps a pantalla completa (pelis, juegos); si no,
         # re-elevar por encima de la barra y recolocar (la barra es topmost)
-        self._reposition()
+        if is_fullscreen_active():
+            if not self._hidden:
+                self.withdraw()
+                self._hidden = True
+        else:
+            if self._hidden:
+                self.deiconify()
+                self._hidden = False
+            self._reposition()
         self.after(700, self._keep)
 
     # ---- datos ----
