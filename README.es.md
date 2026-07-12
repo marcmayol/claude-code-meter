@@ -3,50 +3,76 @@
 
 # Claude Code Meter
 
-Un medidor del **consumo de tokens de [Claude Code](https://claude.com/claude-code)** para Windows.
-Lee los registros locales de sesiones de Claude Code y muestra cuánto llevas
-gastado **hoy / esta semana / este mes**, comparado con un objetivo que pones tú.
+Un medidor de **consumo de [Claude Code](https://claude.com/claude-code)** para
+Windows que muestra tus **límites reales del plan** —los mismos números que ves
+en `/usage`— dentro de la barra de tareas, junto al reloj:
+
+- **`5h`** — % usado de tu ventana de **sesión** (el límite móvil de 5 horas)
+- **`7d`** — % usado de tu ventana **semanal** (se reinicia solo)
+- **`M`** — tu **consumo del mes**, en la misma escala de tu plan (auto-calibrado)
 
 ![Claude Code Meter integrado en la barra de tareas de Windows](https://raw.githubusercontent.com/marcmayol/claude-code-meter/main/assets/screenshot.png)
 
-> Las cifras (`D`ía · `S`emana · `M`es) viven dentro de la barra de tareas, junto al
-> reloj. Cada porcentaje se colorea según su nivel: 🟢 < 70 % · 🟡 < 90 % · 🔴 ≥ 90 %.
-> En Windows en inglés las etiquetas se muestran como `D` · `W` · `M`.
-
-Incluye **tres presentaciones del mismo medidor**. Eliges **una** (no se ejecutan
-a la vez: muestran los mismos datos de tres formas distintas):
-
-| Estilo   | Qué es | Aspecto |
-|----------|--------|---------|
-| **barra** (`bar.py`)  | Cifras **dentro de la barra de tareas**, junto al reloj | `✳ D 77% · S 62% · M 63%` |
-| **tray** (`tray.py`)  | **Icono en la bandeja del sistema** con el dato dibujado y el detalle en el tooltip | `63%` |
-| **panel** (`meter.py`) | **Panel flotante** en la esquina, con barras de progreso | recuadro con HOY/SEM/MES |
-
-`D` = hoy · `S` = semana · `M` = mes, cada uno en **% de su objetivo**.
-Los colores cambian solos: 🟢 < 70 % · 🟡 < 90 % · 🔴 ≥ 90 %.
+> Cada porcentaje se colorea según su nivel: 🟢 < 70 % · 🟡 < 90 % · 🔴 ≥ 90 %.
+> Clic derecho para ver los tiempos de reinicio, el límite semanal calibrado y un
+> **historial semanal** de las semanas anteriores.
 
 ---
 
-## ⚠️ Qué mide (y qué no)
+## Cómo obtiene tus límites *reales*
 
-- ✅ Solo el consumo de **Claude Code ejecutándose en este ordenador**, leyendo
-  `~/.claude/projects/**/*.jsonl`.
-- ❌ **No** mide Claude en la web/app, ni la API, ni otros ordenadores.
-- ❌ **No** es el límite real de tu suscripción: ese dato lo controla el servidor
-  de Anthropic y no se guarda en local (solo se ve con `/usage` dentro de Claude Code).
+Los porcentajes de `/usage` no se guardan en disco: llegan en los **headers de
+rate-limit** de la API en cada respuesta. El medidor hace una petición mínima
+(`max_tokens: 1`, ~1 token) cada pocos minutos usando el token OAuth que Claude
+Code guarda en `~/.claude/.credentials.json`, y lee:
 
-Por eso "lo que queda" se calcula contra un **objetivo personal** que defines tú,
-no contra el límite del plan.
+```
+anthropic-ratelimit-unified-5h-utilization   → ventana de sesión (5 h)
+anthropic-ratelimit-unified-7d-utilization   → ventana semanal (7 días)
+anthropic-ratelimit-unified-…-reset          → marcas de reinicio automático
+```
 
-Por defecto **no cuenta la relectura de caché** (`cache_read`), que dispararía las
-cifras x100 al reenviar el contexto. Mide el trabajo real: `input + output + cache_write`.
+El valor `7d` coincide exactamente con tu pantalla de `/usage`.
+
+### La cifra mensual (auto-calibrada)
+
+Tu plan **no tiene cuota mensual**: solo las ventanas de 5 h y 7 d. Así que el
+medidor *deduce* una vista mensual: sabiendo que tu semana actual va al `X%` y
+cuántos tokens llevas en esa misma ventana (de los registros `.jsonl` locales),
+calcula —por una simple regla de tres— a cuántos tokens equivale el `100%` de tu
+límite semanal, y expresa el mes en esa escala. Guarda la **mejor** observación
+en `calib.json` (cuanto mayor es la utilización, más fina la estimación) y la
+afina con el tiempo. La misma regla de tres reconstruye el **historial de semanas
+anteriores**, que el header ya no recuerda.
+
+Un detalle clave: la ventana semanal se **ancla al reinicio real del plan** (p.ej.
+viernes 23 h), no a la semana natural del calendario, de modo que los tokens que
+cuenta cuadran con lo que el plan está midiendo de verdad.
+
+---
+
+## Qué mide (y qué no)
+
+- ✅ Tus **límites reales del plan** (sesión + semana), desde los headers de la
+  API, más una cifra mensual calibrada a partir de los registros locales
+  (`~/.claude/projects/**/*.jsonl`).
+- ❌ **No** mide Claude en la web/app ni en otros ordenadores (las cifras del plan
+  son los límites de toda tu cuenta; el conteo mensual de tokens es solo local).
+- ℹ️ El conteo local de tokens ignora la **relectura de caché** por defecto
+  (dispararía las cifras x100 al reenviar el contexto); cuenta el trabajo real
+  `input + output + cache_write`.
 
 ---
 
 ## Requisitos
 
 - Windows 10/11
-- Python 3.9+ (con `tkinter`, incluido en el instalador oficial de Python)
+- Una **suscripción Claude** (Pro/Max): el medidor usa el token OAuth que Claude
+  Code guarda en `~/.claude/.credentials.json`. Las configuraciones solo con API
+  key no devuelven los headers de rate-limit unificado, así que los porcentajes
+  del plan no aparecerán.
+- Python 3.9+ (con `tkinter`, incluido en el instalador oficial de Python) — o
+  simplemente el `.exe`.
 
 ## Instalación
 
@@ -55,8 +81,7 @@ cifras x100 al reenviar el contexto. Mide el trabajo real: `input + output + cac
 Descarga el
 **[`claude-code-meter.exe`](https://github.com/marcmayol/claude-code-meter/releases/latest/download/claude-code-meter.exe)**
 más reciente desde la página de [Releases](https://github.com/marcmayol/claude-code-meter/releases)
-y haz doble clic. Aparece en la barra de tareas al momento. Para otro estilo,
-ejecútalo desde una terminal: `claude-code-meter.exe tray` (o `panel`).
+y haz doble clic. Aparece en la barra de tareas al momento.
 
 ### Opción B — pip (necesita Python 3.9+)
 
@@ -65,49 +90,50 @@ pip install claude-code-meter
 ```
 
 Añade el comando `claude-code-meter` e instala las dependencias (Pillow, pystray).
-La configuración y el logo generado se guardan en `%APPDATA%\ClaudeCodeMeter`.
+El estado (`config.json`, `calib.json`, logo generado) se guarda en
+`%APPDATA%\ClaudeCodeMeter`.
 
 <sub>O desde el código: `git clone … && cd claude-code-meter && pip install -e .`</sub>
 
 ## Uso
 
-Elige **un** estilo. Con el `.exe`, basta con hacer doble clic (es el estilo
-`bar`) o ejecutar `claude-code-meter.exe tray|panel`. Si instalaste con pip:
-
 ```bash
-claude-code-meter          # barra de tareas (por defecto, recomendado)
+claude-code-meter          # barra de tareas (por defecto, recomendado — la vista de límites reales)
 claude-code-meter tray     # icono en la bandeja del sistema
 claude-code-meter panel    # panel flotante en la esquina
 ```
 
 (Equivalente: `python -m claude_code_meter.main [bar|tray|panel]`.)
 
-### Ajustar los objetivos
+> **Nota:** el estilo **`bar`** es el que trae los límites reales del plan
+> descritos arriba. `tray` y `panel` son presentaciones más simples que aún
+> muestran el consumo *local* en tokens contra un objetivo personal — ver
+> `config.json`.
 
-Clic derecho sobre las cifras → **Ajustar objetivo** (abre `config.json`), o crea
-tu `config.json` a partir de `config.example.json`:
+### Configuración
+
+`config.json` opcional en `%APPDATA%\ClaudeCodeMeter` (parte de
+`config.example.json`):
 
 ```json
 {
-  "daily_budget": null,          // objetivo diario; null = semanal / 7
-  "weekly_budget": 10000000,     // tokens/semana
-  "monthly_budget": 60000000,    // tokens/mes
-  "count_cache_read": false,     // true = incluir relectura de caché
-  "refresh_sec": 60
+  "refresh_sec": 60,          // cada cuánto se recoloca / repinta la ventana
+  "limits_refresh_sec": 300,  // cada cuánto consulta los límites a la API (~1 token)
+  "count_cache_read": false   // incluir relectura de caché en el conteo local
 }
 ```
 
+La API se consulta como mucho cada `limits_refresh_sec` (5 min por defecto)
+precisamente porque cada consulta cuesta ~1 token — el número refleja tu consumo
+real, no uno inflado.
+
 ### Arranque automático (Windows)
 
-Para que arranque al encender, pon un acceso directo en la carpeta de Inicio
-(`Win+R` → `shell:startup`):
+Pon un acceso directo en la carpeta de Inicio (`Win+R` → `shell:startup`):
 
 - **`.exe` descargado:** apunta el acceso directo directamente a `claude-code-meter.exe`.
-- **pip install:** apúntalo al comando instalado con `bar` como argumento:
-  ```
-  Destino:    …\Scripts\claude-code-meter.exe
-  Argumentos: bar
-  ```
+- **pip install:** apúntalo a `…\Scripts\claude-code-meter.exe` con `bar` como
+  argumento.
 
 Ambos arrancan sin ventana de consola. El repo también incluye `Iniciar Meter.vbs`,
 que ejecuta `pythonw -m claude_code_meter.main bar`.
