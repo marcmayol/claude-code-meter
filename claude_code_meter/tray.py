@@ -1,19 +1,21 @@
 # -*- coding: utf-8 -*-
 """
-Claude Code Meter (bandeja)  ·  Icono DENTRO de la barra de tareas.
-Dibuja el dato elegido (tokens de hoy o % del objetivo mensual) como icono,
-con el desglose hoy/semana/mes en el tooltip y un menú para ajustar/salir.
+Claude Code Meter (bandeja)  ·  Icono en la barra de tareas.
+Dibuja el % de un límite REAL del plan (sesión 5h / semana 7d / mes calibrado)
+como icono, con el desglose completo en el tooltip y en el menú.
 
-Reutiliza la lógica de lectura de meter.py. Requiere pystray + Pillow.
+Usa el estado compartido ``usage.PlanState`` (lo mismo que la versión de barra).
+Requiere pystray + Pillow.
 """
 import os, sys, threading, time, webbrowser
-from datetime import datetime
 
 try:
-    from . import meter  # instalado como paquete
+    from . import meter   # instalado como paquete
+    from . import usage
 except ImportError:
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    import meter          # ejecución directa (python tray.py)
+    import meter           # ejecución directa (python tray.py)
+    import usage
 
 from PIL import Image, ImageDraw, ImageFont
 import pystray
@@ -22,6 +24,11 @@ from pystray import Menu, MenuItem as Item
 GREEN = (76, 175, 125)
 AMBER = (224, 166, 58)
 RED   = (224, 90, 84)
+GREY  = (150, 150, 150)
+
+# métrica que se dibuja en el icono
+METRICS = [("session", "Sesión (5h)"), ("week", "Semana (7d)"), ("month", "Mes")]
+
 
 def load_font(size):
     for name in ("seguisb.ttf", "segoeuib.ttf", "arialbd.ttf", "arial.ttf"):
@@ -31,8 +38,10 @@ def load_font(size):
             continue
     return ImageFont.load_default()
 
+
 def status_color(pct):
     return GREEN if pct < 70 else (AMBER if pct < 90 else RED)
+
 
 def make_icon(text, color, size=64):
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
@@ -50,8 +59,7 @@ def make_icon(text, color, size=64):
     w, h = bb[2] - bb[0], bb[3] - bb[1]
     x = (size - w) / 2 - bb[0]
     y = (size - h) / 2 - bb[1]
-    # contorno para legibilidad sobre barras claras u oscuras
-    for dx in (-2, 0, 2):
+    for dx in (-2, 0, 2):      # contorno para legibilidad
         for dy in (-2, 0, 2):
             if dx or dy:
                 d.text((x + dx, y + dy), text, font=f, fill=(0, 0, 0, 160))
@@ -62,40 +70,59 @@ def make_icon(text, color, size=64):
 class App:
     def __init__(self):
         self.cfg = meter.load_cfg()
-        self.cfg.setdefault("icon_metric", "month_pct")  # "today" | "month_pct"
-        self.reader = meter.Reader()
-        self.d = self.w = self.m = {"t": 0, "in": 0, "out": 0, "cw": 0, "cr": 0}
+        m = self.cfg.get("icon_metric", "week")
+        if m not in {k for k, _ in METRICS}:   # migrar valores antiguos
+            m = "month" if m == "month_pct" else "week"
+        self.cfg["icon_metric"] = m
+        self.state = usage.PlanState(
+            os.path.join(meter.data_dir(), "calib.json"),
+            self.cfg.get("limits_refresh_sec", 300))
         self.icon = pystray.Icon(
             "cc_meter",
-            icon=make_icon("…", (150, 150, 150)),
+            icon=make_icon("…", GREY),
             title="Claude Code · leyendo…",
             menu=self._menu(),
         )
 
-    # ---- textos ----
-    def _pct(self, used, budget):
-        return 0 if budget <= 0 else used / budget * 100
+    # ---- lectura del estado en textos ----
+    def _metric_value(self, key):
+        """Devuelve (pct|None) de la métrica: session/week/month."""
+        if key == "session":
+            return None if not self.state.s5h else self.state.s5h["pct"]
+        if key == "week":
+            return None if not self.state.s7d else self.state.s7d["pct"]
+        return self.state.month_pct
+
+    def _pct_txt(self, pct):
+        return "…" if pct is None else f"{pct:.0f}%"
 
     def _menu(self):
-        def line(label, get):
-            return Item(lambda i: f"{label}: {get()}", None, enabled=False)
+        def line(label, key):
+            return Item(lambda i: f"{label}: {self._pct_txt(self._metric_value(key))}",
+                        None, enabled=False)
+
+        def reset_line():
+            parts = []
+            for lbl, s in (("5h", self.state.s5h), ("7d", self.state.s7d)):
+                if s and s.get("reset_h"):
+                    parts.append(f"{lbl} {s['reset_h']}")
+            return "reset · " + " · ".join(parts) if parts else "reset —"
+
+        metric_items = tuple(
+            Item(f"Icono: {label}", self._set_metric(key),
+                 checked=lambda i, key=key: self.cfg["icon_metric"] == key, radio=True)
+            for key, label in METRICS
+        )
         return Menu(
-            Item(lambda i: "Claude Code · tokens (trabajo real)", None, enabled=False),
+            Item(lambda i: "Claude Code · límites del plan", None, enabled=False),
             Menu.SEPARATOR,
-            line("Hoy   ", lambda: meter.fmt(self.d["t"])),
-            line("Semana", lambda: f"{meter.fmt(self.w['t'])} / {meter.fmt(self.cfg['weekly_budget'])}"
-                                   f"  ({self._pct(self.w['t'], self.cfg['weekly_budget']):.0f}%)"),
-            line("Mes   ", lambda: f"{meter.fmt(self.m['t'])} / {meter.fmt(self.cfg['monthly_budget'])}"
-                                   f"  ({self._pct(self.m['t'], self.cfg['monthly_budget']):.0f}%)"),
+            line("Sesión 5h", "session"),
+            line("Semana 7d", "week"),
+            line("Mes      ", "month"),
+            Item(lambda i: reset_line(), None, enabled=False),
             Menu.SEPARATOR,
-            Item("Mostrar en icono: tokens de hoy",
-                 self._set_metric("today"),
-                 checked=lambda i: self.cfg["icon_metric"] == "today", radio=True),
-            Item("Mostrar en icono: % del mes",
-                 self._set_metric("month_pct"),
-                 checked=lambda i: self.cfg["icon_metric"] == "month_pct", radio=True),
+            *metric_items,
             Menu.SEPARATOR,
-            Item("Ajustar objetivo (abrir config)…", self._edit),
             Item("Actualizar ahora", lambda i: self.refresh()),
             Item("Salir", self._quit),
         )
@@ -107,44 +134,31 @@ class App:
             self.refresh()
         return cb
 
-    def _edit(self, icon, item):
-        # asegurar que el archivo existe, y abrirlo con el editor por defecto
-        meter.save_cfg(self.cfg)
-        try:
-            os.startfile(meter.CONFIG)  # type: ignore[attr-defined]
-        except Exception:
-            webbrowser.open(meter.CONFIG)
-
     def _quit(self, icon, item):
         self.stop = True
         icon.stop()
 
     # ---- refresco ----
     def refresh(self):
-        # relee config por si el usuario editó el archivo a mano
         self.cfg = {**self.cfg, **meter.load_cfg()}
-        self.cfg.setdefault("icon_metric", "month_pct")
-        daily = self.reader.collect()
-        today = datetime.now().astimezone().date()
-        cr = self.cfg["count_cache_read"]
-        self.d = meter.sum_period(daily, [today.isoformat()], cr)
-        self.w = meter.sum_period(daily, meter.days_of_week(today), cr)
-        self.m = meter.sum_period(daily, meter.days_of_month(today), cr)
+        self.state.limits_refresh_sec = self.cfg.get("limits_refresh_sec", 300)
+        self.state.update(self.cfg.get("count_cache_read", False))
 
-        pct_m = self._pct(self.m["t"], self.cfg["monthly_budget"])
-        color = status_color(pct_m)
-        if self.cfg["icon_metric"] == "month_pct":
-            txt = f"{pct_m:.0f}%"
-        else:
-            txt = meter.fmt(self.d["t"])
-        self.icon.icon = make_icon(txt, color)
+        pct = self._metric_value(self.cfg["icon_metric"])
+        color = GREY if pct is None else status_color(pct)
+        self.icon.icon = make_icon(self._pct_txt(pct), color)
+
+        def tip(lbl, s):
+            if not s:
+                return f"{lbl} …"
+            r = f"  (reset {s['reset_h']})" if s.get("reset_h") else ""
+            return f"{lbl} {s['pct']:.0f}%{r}"
+        mtxt = "…" if self.state.month_pct is None else f"{self.state.month_pct:.0f}%"
         self.icon.title = (
-            "Claude Code · tokens (trabajo real)\n"
-            f"Hoy {meter.fmt(self.d['t'])}\n"
-            f"Semana {meter.fmt(self.w['t'])} / {meter.fmt(self.cfg['weekly_budget'])}"
-            f" ({self._pct(self.w['t'], self.cfg['weekly_budget']):.0f}%)\n"
-            f"Mes {meter.fmt(self.m['t'])} / {meter.fmt(self.cfg['monthly_budget'])}"
-            f" ({pct_m:.0f}%)"
+            "Claude Code · límites del plan\n"
+            + tip("Sesión 5h", self.state.s5h) + "\n"
+            + tip("Semana 7d", self.state.s7d) + "\n"
+            + f"Mes {mtxt}"
         )
         try:
             self.icon.update_menu()

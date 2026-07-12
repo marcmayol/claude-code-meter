@@ -2,10 +2,5 @@
   "refresh_sec": 60,
   "limits_refresh_sec": 300,
   "count_cache_read": false,
-
-  "_note": "bar.py usa límites reales del plan (5h/7d) + mes auto-calibrado; las claves siguientes solo afectan a los estilos tray/panel (consumo local vs objetivo)",
-  "daily_budget": null,
-  "weekly_budget": 10000000,
-  "monthly_budget": 60000000,
-  "icon_metric": "month_pct"
+  "icon_metric": "week"
 }

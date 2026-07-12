@@ -20,8 +20,13 @@ reinicios y resets semanales, afinándola con el tiempo.
 
 Solo librería estándar.
 """
-import os, json, glob, calendar
+import os, json, glob, calendar, time
 from datetime import datetime
+
+try:
+    from . import limits
+except ImportError:  # ejecución directa
+    import limits
 
 
 def _claude_dir():
@@ -195,3 +200,70 @@ def update_calibration(path, util, window_tokens, now_epoch):
     if best:
         return best["tokens"] / best["util"]   # límite semanal en tokens
     return None
+
+
+# ---- estado del plan, compartido por los tres estilos (bar/tray/panel) ------
+class PlanState:
+    """Reúne los límites REALES del plan + mes calibrado + historial semanal.
+
+    Un único ``update()`` hace: consultar los límites a la API (con throttle,
+    porque cada consulta gasta ~1 token), anclar la ventana semanal al reset
+    real, calibrar el límite en tokens (regla de tres) y derivar el mes y el
+    historial. Los tres estilos lo usan para pintar lo mismo.
+
+    Tras ``update()`` quedan disponibles:
+        s5h, s7d   -> {"pct": 0..100, "reset": epoch, "reset_h": "en Xh"} | None
+        month_pct  -> float | None
+        weekly_limit -> tokens | None
+        week_hist  -> lista de week_history()
+        error      -> str | None (última consulta fallida)
+    """
+    def __init__(self, calib_path, limits_refresh_sec=300):
+        self.calib_path = calib_path
+        self.limits_refresh_sec = limits_refresh_sec
+        self.reader = HourlyReader()
+        self._limits = None
+        self._limits_at = 0.0
+        self.error = None
+        self.s5h = None
+        self.s7d = None
+        self.month_pct = None
+        self.weekly_limit = None
+        self.week_hist = []
+
+    def update(self, count_cr=False):
+        now = time.time()
+        if now - self._limits_at >= self.limits_refresh_sec:
+            res = limits.fetch()
+            if res.get("ok"):
+                self._limits = res
+                self._limits_at = now
+                self.error = None
+            else:
+                self.error = res.get("error", "?")
+
+        wins = (self._limits or {}).get("windows", {})
+
+        def win(key):
+            w = wins.get(key)
+            if not w:
+                return None
+            return {"pct": w["used"] * 100, "reset": w.get("reset"),
+                    "reset_h": limits.human_reset(w.get("reset"), now)}
+        self.s5h = win("5h")
+        self.s7d = win("7d")
+
+        w7d = wins.get("7d")
+        if w7d and w7d.get("reset"):
+            hourly = self.reader.collect()
+            w_start, _ = plan_week_window(w7d["reset"])
+            wtok = sum_range(hourly, w_start, now, count_cr)
+            self.weekly_limit = update_calibration(
+                self.calib_path, w7d["used"], wtok["t"], int(now))
+            if self.weekly_limit:
+                mtok = sum_range(hourly, month_start(), now, count_cr)
+                budget = self.weekly_limit * days_in_month() / 7
+                self.month_pct = 0 if budget <= 0 else mtok["t"] / budget * 100
+                self.week_hist = week_history(
+                    hourly, w7d["reset"], self.weekly_limit, now, n=6, count_cr=count_cr)
+        return self

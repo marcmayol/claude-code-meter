@@ -104,9 +104,10 @@ claude-code-meter panel    # floating panel in the corner
 
 (Equivalent: `python -m claude_code_meter.main [bar|tray|panel]`.)
 
-> **Note:** the **`bar`** style is the one with the real plan limits described
-> above. `tray` and `panel` are simpler presentations that still show *local*
-> token usage against a personal target — see `config.json`.
+All three styles show the **same real plan limits** (5h · 7d · calibrated month):
+`bar` embeds them in the taskbar, `tray` draws one chosen metric as a tray icon
+(full breakdown in the tooltip), and `panel` shows three progress bars in a
+floating corner panel.
 
 ### Configuration
 
@@ -117,7 +118,8 @@ Optional `config.json` in `%APPDATA%\ClaudeCodeMeter` (start from
 {
   "refresh_sec": 60,          // how often the window repositions / repaints
   "limits_refresh_sec": 300,  // how often it probes the API for plan limits (~1 token each)
-  "count_cache_read": false   // include cache reads in local token counts
+  "count_cache_read": false,  // include cache reads in local token counts
+  "icon_metric": "week"       // tray icon: "session" (5h) | "week" (7d) | "month"
 }
 ```
 

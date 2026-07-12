@@ -105,10 +105,10 @@ claude-code-meter panel    # panel flotante en la esquina
 
 (Equivalente: `python -m claude_code_meter.main [bar|tray|panel]`.)
 
-> **Nota:** el estilo **`bar`** es el que trae los límites reales del plan
-> descritos arriba. `tray` y `panel` son presentaciones más simples que aún
-> muestran el consumo *local* en tokens contra un objetivo personal — ver
-> `config.json`.
+Los tres estilos muestran los **mismos límites reales del plan** (5h · 7d · mes
+calibrado): `bar` los incrusta en la barra de tareas, `tray` dibuja la métrica
+que elijas como icono de bandeja (desglose completo en el tooltip) y `panel`
+muestra tres barras de progreso en un panel flotante en la esquina.
 
 ### Configuración
 
@@ -119,7 +119,8 @@ claude-code-meter panel    # panel flotante en la esquina
 {
   "refresh_sec": 60,          // cada cuánto se recoloca / repinta la ventana
   "limits_refresh_sec": 300,  // cada cuánto consulta los límites a la API (~1 token)
-  "count_cache_read": false   // incluir relectura de caché en el conteo local
+  "count_cache_read": false,  // incluir relectura de caché en el conteo local
+  "icon_metric": "week"       // icono de bandeja: "session" (5h) | "week" (7d) | "month"
 }
 ```
 

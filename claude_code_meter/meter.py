@@ -11,6 +11,12 @@ from datetime import datetime, date
 import tkinter as tk
 from tkinter import font as tkfont
 
+try:
+    from . import usage   # estado compartido (límites reales del plan)
+except ImportError:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import usage
+
 # ---- Windows: nitidez en pantallas HiDPI ----------------------------------
 try:
     import ctypes
@@ -170,7 +176,9 @@ class Meter(tk.Tk):
     def __init__(self):
         super().__init__()
         self.cfg = load_cfg()
-        self.reader = Reader()
+        self.state = usage.PlanState(
+            os.path.join(data_dir(), "calib.json"),
+            self.cfg.get("limits_refresh_sec", 300))
         self.overrideredirect(True)
         self.attributes("-topmost", True)
         self.configure(bg=BG)
@@ -200,32 +208,23 @@ class Meter(tk.Tk):
         head = tk.Frame(root, bg=BG)
         head.pack(fill="x", padx=pad, pady=(pad, 2))
         tk.Label(head, text="●", fg=ACCENT, bg=BG, font=self.f_title).pack(side="left")
-        tk.Label(head, text=" Claude Code · tokens", fg=FG, bg=BG,
+        tk.Label(head, text=" Claude Code · límites del plan", fg=FG, bg=BG,
                  font=self.f_title).pack(side="left")
         close = tk.Label(head, text="✕", fg=MUTED, bg=BG, font=self.f_title, cursor="hand2")
         close.pack(side="right"); close.bind("<Button-1>", lambda e: self.destroy())
-        gear = tk.Label(head, text="⚙", fg=MUTED, bg=BG, font=self.f_title, cursor="hand2")
-        gear.pack(side="right", padx=(0, 6)); gear.bind("<Button-1>", lambda e: self.edit_budget())
 
         body = tk.Frame(root, bg=BG)
         body.pack(fill="both", expand=True, padx=pad, pady=(2, pad))
 
-        # HOY  (solo cifra)
-        row = tk.Frame(body, bg=BG); row.pack(fill="x")
-        tk.Label(row, text="HOY", fg=MUTED, bg=BG, font=self.f_lbl, width=5, anchor="w").pack(side="left")
-        self.today_big = tk.Label(row, text="—", fg=FG, bg=BG, font=self.f_big, anchor="w")
-        self.today_big.pack(side="left")
-        self.today_sub = tk.Label(body, text="", fg=MUTED, bg=BG, font=self.f_small, anchor="w")
-        self.today_sub.pack(fill="x", padx=(40, 0))
+        # tres barras con % REAL del plan: sesión (5h) · semana (7d) · mes calibrado
+        self.r5h = self._bar_row(body, "SESIÓN")
+        self.r7d = self._bar_row(body, "SEMANA")
+        self.rm = self._bar_row(body, "MES")
 
-        # SEMANA y MES con barra
-        self.week = self._budget_row(body, "SEM")
-        self.month = self._budget_row(body, "MES")
-
-    def _budget_row(self, parent, label):
+    def _bar_row(self, parent, label):
         wrap = tk.Frame(parent, bg=BG); wrap.pack(fill="x", pady=(6, 0))
         top = tk.Frame(wrap, bg=BG); top.pack(fill="x")
-        tk.Label(top, text=label, fg=MUTED, bg=BG, font=self.f_lbl, width=5, anchor="w").pack(side="left")
+        tk.Label(top, text=label, fg=MUTED, bg=BG, font=self.f_lbl, width=7, anchor="w").pack(side="left")
         val = tk.Label(top, text="—", fg=FG, bg=BG, font=self.f_lbl, anchor="w")
         val.pack(side="left")
         pct = tk.Label(top, text="", fg=MUTED, bg=BG, font=self.f_small, anchor="e")
@@ -235,11 +234,14 @@ class Meter(tk.Tk):
         bar = cv.create_rectangle(0, 0, 0, 6, fill=GREEN, width=0)
         return {"val": val, "pct": pct, "cv": cv, "bar": bar}
 
-    def _set_bar(self, row, used, budget):
-        row["val"].config(text=f"{fmt(used)} / {fmt(budget)}")
-        frac = 0 if budget <= 0 else min(used / budget, 1.0)
-        pct = 0 if budget <= 0 else used / budget * 100
-        row["pct"].config(text=f"{pct:.0f}%")
+    def _set_bar_pct(self, row, pct, sub=""):
+        """Pinta una barra con un % (0..100) del límite real y un texto (reset)."""
+        if pct is None:
+            row["val"].config(text="…"); row["pct"].config(text="")
+            return
+        row["val"].config(text=f"{pct:.0f}%")
+        row["pct"].config(text=sub)
+        frac = min(max(pct / 100, 0), 1.0)
         color = GREEN if pct < 70 else (AMBER if pct < 90 else RED)
         w = max(row["cv"].winfo_width(), 1)
         row["cv"].coords(row["bar"], 0, 0, int(w * frac), 6)
@@ -330,24 +332,22 @@ class Meter(tk.Tk):
     # ---- refresco ----
     def refresh(self, initial=False):
         def work():
-            daily = self.reader.collect()
-            today = datetime.now().astimezone().date()
-            cr = self.cfg["count_cache_read"]
-            d = sum_period(daily, [today.isoformat()], cr)
-            w = sum_period(daily, days_of_week(today), cr)
-            m = sum_period(daily, days_of_month(today), cr)
-            self.after(0, lambda: self._render(d, w, m))
+            self.cfg = {**self.cfg, **load_cfg()}
+            self.state.limits_refresh_sec = self.cfg.get("limits_refresh_sec", 300)
+            self.state.update(self.cfg.get("count_cache_read", False))
+            self.after(0, self._render)
         threading.Thread(target=work, daemon=True).start()
         self.after(self.cfg.get("refresh_sec", 60) * 1000, self.refresh)
 
-    def _render(self, d, w, m):
-        self.today_big.config(text=fmt(d["t"]))
-        cr_txt = f" · read {fmt(d['cr'])}" if self.cfg["count_cache_read"] else ""
-        self.today_sub.config(text=f"in {fmt(d['in'])} · out {fmt(d['out'])} · "
-                                   f"cache-w {fmt(d['cw'])}{cr_txt}")
+    def _render(self):
+        st = self.state
         self.update_idletasks()
-        self._set_bar(self.week,  w["t"], self.cfg["weekly_budget"])
-        self._set_bar(self.month, m["t"], self.cfg["monthly_budget"])
+        s5, s7 = st.s5h, st.s7d
+        self._set_bar_pct(self.r5h, None if not s5 else s5["pct"],
+                          "" if not s5 else s5.get("reset_h", ""))
+        self._set_bar_pct(self.r7d, None if not s7 else s7["pct"],
+                          "" if not s7 else s7.get("reset_h", ""))
+        self._set_bar_pct(self.rm, st.month_pct, "calibrado")
 
 if __name__ == "__main__":
     Meter().mainloop()

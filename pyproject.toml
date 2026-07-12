@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "claude-code-meter"
-version = "0.2.0"
+version = "0.2.1"
 description = "A Claude Code token-usage meter for the Windows taskbar"
 readme = "README.md"
 requires-python = ">=3.9"

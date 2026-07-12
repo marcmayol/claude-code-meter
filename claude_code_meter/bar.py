@@ -159,14 +159,10 @@ class Bar(tk.Tk):
         self.f  = tkfont.Font(family="Segoe UI", size=9)
         self.fb = tkfont.Font(family="Segoe UI Semibold", size=9)
 
-        self._limits = None       # último resultado de limits.fetch()
-        self._limits_at = 0.0     # epoch de la última consulta con éxito
-        self._limits_err = None
-        self._month_pct = None    # % del mes en la escala calibrada del plan
-        self._weekly_limit = None # límite semanal estimado (tokens)
-        self._week_hist = []      # % del plan de las últimas semanas (regla de 3)
-        self.hreader = usage.HourlyReader()
-        self._calib_path = os.path.join(meter.data_dir(), "calib.json")
+        # estado compartido (límites reales del plan + mes calibrado + historial)
+        self.state = usage.PlanState(
+            os.path.join(meter.data_dir(), "calib.json"),
+            self.cfg.get("limits_refresh_sec", 300))
 
         self.hwnd = None
         self._build()
@@ -271,74 +267,31 @@ class Bar(tk.Tk):
     # ---- datos ----
     def refresh(self):
         def work():
-            # Los límites del plan se consultan a la API con moderación (cada
-            # ~5 min): cada consulta gasta ~1 token. Entre medias reusamos el
-            # último resultado; solo se recoloca la ventana en cada ciclo.
-            every = self.cfg.get("limits_refresh_sec", 300)
-            if time.time() - self._limits_at >= every:
-                res = limits.fetch()
-                if res.get("ok"):
-                    self._limits = res
-                    self._limits_at = time.time()
-                    self._limits_err = None
-                else:
-                    self._limits_err = res.get("error", "?")
-
-            # Mes en la escala REAL del plan (auto-calibrado). El consumo se lee
-            # por hora de los .jsonl locales (barato, cada ciclo).
             self.cfg = {**self.cfg, **meter.load_cfg()}
-            cr = self.cfg.get("count_cache_read", False)
-            hourly = self.hreader.collect()
-            now = time.time()
-            w7d = (self._limits or {}).get("windows", {}).get("7d") if self._limits else None
-            if w7d and w7d.get("reset"):
-                # tokens de la ventana que el plan mide AHORA (anclada al reset)
-                w_start, _ = usage.plan_week_window(w7d["reset"])
-                wtok = usage.sum_range(hourly, w_start, now, cr)
-                self._weekly_limit = usage.update_calibration(
-                    self._calib_path, w7d["used"], wtok["t"], int(now))
-            if self._weekly_limit:
-                mtok = usage.sum_range(hourly, usage.month_start(), now, cr)
-                budget = self._weekly_limit * usage.days_in_month() / 7
-                self._month_pct = 0 if budget <= 0 else mtok["t"] / budget * 100
-                if w7d and w7d.get("reset"):
-                    # % de las semanas anteriores por regla de tres (el header
-                    # solo recuerda la actual; el resto sale de los .jsonl)
-                    self._week_hist = usage.week_history(
-                        hourly, w7d["reset"], self._weekly_limit, now, n=6, count_cr=cr)
+            self.state.limits_refresh_sec = self.cfg.get("limits_refresh_sec", 300)
+            self.state.update(self.cfg.get("count_cache_read", False))
             self.after(0, self._render)
         threading.Thread(target=work, daemon=True).start()
         self.after(self.cfg.get("refresh_sec", 60) * 1000, self.refresh)
 
     def _render(self):
-        # M = consumo del mes en la escala calibrada del plan. Se pinta en cuanto
-        # hay calibración; hasta entonces "…".
-        if self._month_pct is not None:
-            self.vm.config(text=f"{self._month_pct:.0f}%", fg=meter_color(self._month_pct))
+        st = self.state
+        if st.month_pct is not None:
+            self.vm.config(text=f"{st.month_pct:.0f}%", fg=meter_color(st.month_pct))
 
-        res = self._limits
-        if not res:
-            txt = "…" if not self._limits_err else "!"
-            self.v5h.config(text=txt, fg=MUTED)
-            self.v7d.config(text=txt, fg=MUTED)
-            self._reposition()
-            return
-        wins = res.get("windows", {})
         resets = []
-        for lbl, key in (("5h", self.v5h), ("7d", self.v7d)):
-            w = wins.get(lbl)
-            if not w:
-                key.config(text="—", fg=MUTED)
+        for s, box in ((st.s5h, self.v5h), (st.s7d, self.v7d)):
+            if not s:
+                box.config(text=("!" if st.error else "…"), fg=MUTED)
                 continue
-            pct = w["used"] * 100
-            key.config(text=f"{pct:.0f}%", fg=meter_color(pct))
-            r = limits.human_reset(w.get("reset"))
-            if r:
-                resets.append(f"{lbl} {r}")
+            box.config(text=f"{s['pct']:.0f}%", fg=meter_color(s["pct"]))
+        for lbl, s in (("5h", st.s5h), ("7d", st.s7d)):
+            if s and s.get("reset_h"):
+                resets.append(f"{lbl} {s['reset_h']}")
         if resets:
             self.menu.entryconfig(0, label="reset · " + " · ".join(resets))
-        if self._weekly_limit:
-            wl = self._weekly_limit
+        if st.weekly_limit:
+            wl = st.weekly_limit
             txt = f"{wl/1e9:.1f}B" if wl >= 1e9 else f"{wl/1e6:.0f}M"
             self.menu.entryconfig(1, label=f"límite sem. ≈ {txt} tok (calibrado)")
         self._fill_history()
@@ -346,10 +299,10 @@ class Bar(tk.Tk):
 
     def _fill_history(self):
         self.hist_menu.delete(0, "end")
-        if not self._week_hist:
+        if not self.state.week_hist:
             self.hist_menu.add_command(label="(calibrando…)", state="disabled")
             return
-        for h in self._week_hist:
+        for h in self.state.week_hist:
             d0 = datetime.fromtimestamp(h["start"]).strftime("%d %b")
             d1 = datetime.fromtimestamp(h["end"]).strftime("%d %b")
             tag = "esta sem" if h["current"] else f"hace {h['i']}"
