@@ -5,31 +5,23 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "claude-code-meter"
 version = "0.3.1"
-description = "A Claude Code plan-limits meter (Windows taskbar / cross-platform floating panel)"
+description = "A Claude Code token-usage meter for the Windows taskbar"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [{ name = "Marc Mayol Orell", email = "marcmayolorell@gmail.com" }]
-keywords = ["claude", "claude-code", "tokens", "usage", "taskbar", "meter", "linux"]
+keywords = ["claude", "claude-code", "tokens", "usage", "taskbar", "windows", "meter"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Win32 (MS Windows)",
-    "Environment :: X11 Applications",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Operating System :: Microsoft :: Windows",
-    "Operating System :: POSIX :: Linux",
-    "Operating System :: MacOS",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Topic :: Utilities",
 ]
-# Pillow y pystray solo los usan los estilos 'bar'/'tray' (barra de Windows).
-# En Linux/macOS el estilo es 'panel', que solo necesita tkinter (del sistema).
-dependencies = [
-    'Pillow>=10.0; sys_platform == "win32"',
-    'pystray>=0.19; sys_platform == "win32"',
-]
+dependencies = ["Pillow>=10.0", "pystray>=0.19"]
 
 [project.urls]
 Homepage = "https://github.com/marcmayol/claude-code-meter"

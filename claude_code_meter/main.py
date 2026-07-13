@@ -5,23 +5,16 @@ Punto de entrada de Claude Code Meter.
 Elige UNA presentación (no se lanzan las tres a la vez; muestran lo mismo
 de formas distintas):
 
-    claude-code-meter          -> barra de tareas (Windows) / panel (Linux·macOS)
-    claude-code-meter tray     -> icono en la bandeja del sistema (Windows)
-    claude-code-meter panel    -> panel flotante en la esquina (multiplataforma)
+    claude-code-meter          -> barra de tareas (por defecto, recomendado)
+    claude-code-meter tray     -> icono en la bandeja del sistema
+    claude-code-meter panel    -> panel flotante en la esquina
 
 (o `python -m claude_code_meter.main [bar|tray|panel]`)
-
-`bar` y `tray` se incrustan en la barra de tareas de Windows; en Linux/macOS,
-donde no hay una barra fija donde incrustarse, el estilo recomendado es `panel`
-(y es el que se usa por defecto en esas plataformas).
 """
 import sys
 import importlib
 
-IS_WIN = sys.platform.startswith("win")
-
-USAGE = ("Uso: claude-code-meter [bar|tray|panel]   "
-         f"(por defecto: {'bar' if IS_WIN else 'panel'})")
+USAGE = "Uso: claude-code-meter [bar|tray|panel]   (por defecto: bar)"
 
 
 def _load(name):
@@ -35,14 +28,7 @@ def _load(name):
 
 
 def main():
-    default = "bar" if IS_WIN else "panel"
-    choice = (sys.argv[1] if len(sys.argv) > 1 else default).lower()
-
-    # bar/tray se incrustan en la barra de Windows: fuera de Windows -> panel
-    if not IS_WIN and choice in ("bar", "barra", "tray", "bandeja"):
-        print(f"El estilo '{choice}' es específico de la barra de tareas de "
-              f"Windows y no está disponible en {sys.platform}. Usando 'panel'.")
-        choice = "panel"
+    choice = (sys.argv[1] if len(sys.argv) > 1 else "bar").lower()
 
     if choice in ("bar", "barra"):
         _load("bar").Bar().mainloop()
