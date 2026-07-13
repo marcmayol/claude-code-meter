@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Claude Code Meter  ·  Panel flotante sobre la barra de tareas.
-Muestra el consumo de tokens de Claude Code (hoy / semana / mes) leyendo
-los .jsonl locales, con barras de presupuesto propio para semana y mes.
+Claude Code Meter  ·  Panel flotante (multiplataforma).
+Muestra los límites reales del plan de Claude Code (sesión 5h / semana 7d / mes
+calibrado) en un pequeño panel flotante que se puede arrastrar a cualquier
+esquina. Es la presentación recomendada en Linux/macOS, donde no hay una barra
+de tareas fija donde incrustarse como en Windows.
 
-Sin dependencias externas: solo la librería estándar de Python.
+Sin dependencias externas para la lógica: solo la librería estándar + tkinter.
 """
 import os, sys, json, glob, threading, time
 from datetime import datetime, date
@@ -17,13 +19,26 @@ except ImportError:
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import usage
 
-# ---- Windows: nitidez en pantallas HiDPI ----------------------------------
-try:
-    import ctypes
-    from ctypes import wintypes
-    ctypes.windll.shcore.SetProcessDpiAwareness(1)
-except Exception:
-    ctypes = None
+IS_WIN = sys.platform.startswith("win")
+
+# ---- Windows: nitidez en pantallas HiDPI (no-op en Linux/macOS) ------------
+ctypes = None
+if IS_WIN:
+    try:
+        import ctypes
+        from ctypes import wintypes
+        ctypes.windll.shcore.SetProcessDpiAwareness(1)
+    except Exception:
+        ctypes = None
+
+
+def ui_family(semibold=False):
+    """Familia tipográfica del sistema según la plataforma (con fallback)."""
+    if IS_WIN:
+        return "Segoe UI Semibold" if semibold else "Segoe UI"
+    if sys.platform == "darwin":
+        return "Helvetica Neue"
+    return "DejaVu Sans"   # presente en casi cualquier Linux con tkinter
 
 def data_dir():
     """Carpeta de datos del usuario (config.json, logo.png).
@@ -182,16 +197,18 @@ class Meter(tk.Tk):
         self.overrideredirect(True)
         self.attributes("-topmost", True)
         self.configure(bg=BG)
-        try:
-            dpi = ctypes.windll.user32.GetDpiForSystem() if ctypes else 96
-            self.tk.call("tk", "scaling", dpi / 72.0)
-        except Exception:
-            pass
+        if IS_WIN:
+            try:
+                dpi = ctypes.windll.user32.GetDpiForSystem() if ctypes else 96
+                self.tk.call("tk", "scaling", dpi / 72.0)
+            except Exception:
+                pass
 
-        self.f_title = tkfont.Font(family="Segoe UI", size=8, weight="bold")
-        self.f_lbl   = tkfont.Font(family="Segoe UI", size=8)
-        self.f_big   = tkfont.Font(family="Segoe UI Semibold", size=13)
-        self.f_small = tkfont.Font(family="Segoe UI", size=7)
+        big_w = "normal" if IS_WIN else "bold"   # en Windows hay familia Semibold
+        self.f_title = tkfont.Font(family=ui_family(), size=8, weight="bold")
+        self.f_lbl   = tkfont.Font(family=ui_family(), size=8)
+        self.f_big   = tkfont.Font(family=ui_family(semibold=True), size=13, weight=big_w)
+        self.f_small = tkfont.Font(family=ui_family(), size=7)
 
         self._build()
         self._place_initial()
@@ -249,13 +266,18 @@ class Meter(tk.Tk):
 
     # ---- posición y arrastre ----
     def _work_area(self):
-        try:
-            SPI = 0x0030
-            r = wintypes.RECT()
-            ctypes.windll.user32.SystemParametersInfoW(SPI, 0, ctypes.byref(r), 0)
-            return r.right, r.bottom
-        except Exception:
-            return self.winfo_screenwidth(), self.winfo_screenheight()
+        # En Windows descontamos la barra de tareas (área de trabajo real). En
+        # Linux/macOS no hay una API única fiable, así que usamos toda la
+        # pantalla; el panel es arrastrable y guarda su posición.
+        if IS_WIN:
+            try:
+                SPI = 0x0030
+                r = wintypes.RECT()
+                ctypes.windll.user32.SystemParametersInfoW(SPI, 0, ctypes.byref(r), 0)
+                return r.right, r.bottom
+            except Exception:
+                pass
+        return self.winfo_screenwidth(), self.winfo_screenheight()
 
     def _place_initial(self):
         self.update_idletasks()

@@ -3,9 +3,9 @@
 
 # Claude Code Meter
 
-A **[Claude Code](https://claude.com/claude-code) usage meter** for Windows that
-shows your **real plan limits** — the same numbers you see in `/usage` — right
-inside the taskbar, next to the clock:
+A **[Claude Code](https://claude.com/claude-code) usage meter** for Windows,
+Linux and macOS that shows your **real plan limits** — the same numbers you see
+in `/usage` — inside the Windows taskbar (or a floating panel on Linux/macOS):
 
 - **`5h`** — % used of your **session** window (the rolling 5-hour limit)
 - **`7d`** — % used of your **weekly** window (resets on its own)
@@ -66,12 +66,20 @@ the plan is actually measuring.
 
 ## Requirements
 
-- Windows 10/11
+- **Windows 10/11**, **Linux** (X11) or **macOS**.
 - A **Claude subscription** (Pro/Max): the meter uses the OAuth token Claude Code
   stores in `~/.claude/.credentials.json`. API-key-only setups don't return the
   unified rate-limit headers, so the plan percentages won't show.
-- Python 3.9+ (with `tkinter`, included in the official Python installer) — or
-  just the `.exe`.
+- Python 3.9+ with `tkinter`. On Windows/macOS it ships with the official Python
+  installer; on Linux install it from your package manager
+  (`sudo apt install python3-tk`, `sudo dnf install python3-tkinter`, …).
+
+### Platforms
+
+The **`bar`** and **`tray`** styles embed into the **Windows** taskbar. On
+**Linux/macOS** there's no fixed taskbar to embed into, so the meter runs as the
+**`panel`** style — a small draggable floating window — which is the default
+there. `panel` needs only `tkinter` (no Pillow/pystray).
 
 ## Install
 
@@ -108,6 +116,17 @@ All three styles show the **same real plan limits** (5h · 7d · calibrated mont
 `bar` embeds them in the taskbar, `tray` draws one chosen metric as a tray icon
 (full breakdown in the tooltip), and `panel` shows three progress bars in a
 floating corner panel.
+
+On **Linux/macOS** just run `claude-code-meter` (it defaults to `panel`):
+
+```bash
+sudo apt install python3-tk      # Debian/Ubuntu (or dnf install python3-tkinter)
+pip install claude-code-meter
+claude-code-meter                # floating panel — drag it anywhere; it remembers its spot
+```
+
+<sub>Panel tip: it's a borderless always-on-top window. Works best under X11;
+Wayland may restrict placement/always-on-top depending on the compositor.</sub>
 
 ### Configuration
 

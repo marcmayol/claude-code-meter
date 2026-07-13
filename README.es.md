@@ -4,8 +4,9 @@
 # Claude Code Meter
 
 Un medidor de **consumo de [Claude Code](https://claude.com/claude-code)** para
-Windows que muestra tus **límites reales del plan** —los mismos números que ves
-en `/usage`— dentro de la barra de tareas, junto al reloj:
+Windows, Linux y macOS que muestra tus **límites reales del plan** —los mismos
+números que ves en `/usage`— en la barra de tareas de Windows (o en un panel
+flotante en Linux/macOS):
 
 - **`5h`** — % usado de tu ventana de **sesión** (el límite móvil de 5 horas)
 - **`7d`** — % usado de tu ventana **semanal** (se reinicia solo)
@@ -66,13 +67,22 @@ cuenta cuadran con lo que el plan está midiendo de verdad.
 
 ## Requisitos
 
-- Windows 10/11
+- **Windows 10/11**, **Linux** (X11) o **macOS**.
 - Una **suscripción Claude** (Pro/Max): el medidor usa el token OAuth que Claude
   Code guarda en `~/.claude/.credentials.json`. Las configuraciones solo con API
   key no devuelven los headers de rate-limit unificado, así que los porcentajes
   del plan no aparecerán.
-- Python 3.9+ (con `tkinter`, incluido en el instalador oficial de Python) — o
-  simplemente el `.exe`.
+- Python 3.9+ con `tkinter`. En Windows/macOS viene con el instalador oficial de
+  Python; en Linux instálalo desde tu gestor de paquetes
+  (`sudo apt install python3-tk`, `sudo dnf install python3-tkinter`, …).
+
+### Plataformas
+
+Los estilos **`bar`** y **`tray`** se incrustan en la barra de tareas de
+**Windows**. En **Linux/macOS** no hay una barra fija donde incrustarse, así que
+el medidor funciona como estilo **`panel`** —una ventanita flotante que se
+arrastra— y es el que se usa por defecto ahí. `panel` solo necesita `tkinter`
+(sin Pillow/pystray).
 
 ## Instalación
 
@@ -109,6 +119,17 @@ Los tres estilos muestran los **mismos límites reales del plan** (5h · 7d · m
 calibrado): `bar` los incrusta en la barra de tareas, `tray` dibuja la métrica
 que elijas como icono de bandeja (desglose completo en el tooltip) y `panel`
 muestra tres barras de progreso en un panel flotante en la esquina.
+
+En **Linux/macOS** basta con ejecutar `claude-code-meter` (usa `panel` por defecto):
+
+```bash
+sudo apt install python3-tk      # Debian/Ubuntu (o dnf install python3-tkinter)
+pip install claude-code-meter
+claude-code-meter                # panel flotante — arrástralo donde quieras; recuerda su sitio
+```
+
+<sub>El panel es una ventana sin bordes siempre visible. Funciona mejor en X11;
+en Wayland el compositor puede limitar la posición o el «siempre encima».</sub>
 
 ### Configuración
 
