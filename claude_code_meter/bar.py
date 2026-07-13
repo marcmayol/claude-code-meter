@@ -69,6 +69,7 @@ for fn, res, args in [
     ("SetWindowPos", wintypes.BOOL, [wintypes.HWND, wintypes.HWND, ctypes.c_int,
                                      ctypes.c_int, ctypes.c_int, ctypes.c_int, wintypes.UINT]),
     ("GetAncestor", wintypes.HWND, [wintypes.HWND, wintypes.UINT]),
+    ("ShowWindow", wintypes.BOOL, [wintypes.HWND, ctypes.c_int]),
     ("GetForegroundWindow", wintypes.HWND, []),
     ("GetClassNameW", ctypes.c_int, [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]),
     ("MonitorFromWindow", wintypes.HANDLE, [wintypes.HWND, wintypes.DWORD]),
@@ -82,6 +83,8 @@ HWND_TOPMOST = -1
 SWP_NOACTIVATE = 0x0010
 SWP_SHOWWINDOW = 0x0040
 SWP_NOSIZE = 0x0001
+SW_HIDE = 0
+SW_SHOWNA = 8            # mostrar sin activar/robar el foco
 MONITOR_DEFAULTTONEAREST = 2
 
 
@@ -90,10 +93,45 @@ class MONITORINFO(ctypes.Structure):
                 ("rcWork", wintypes.RECT), ("dwFlags", wintypes.DWORD)]
 
 
+# SHQueryUserNotificationState: la misma API que usa Windows para silenciar las
+# notificaciones cuando hay algo a pantalla completa (juegos, vídeo D3D,
+# presentaciones). Es global (no depende de cuál sea la ventana con foco), por
+# eso detecta reproductores que el chequeo por rect se perdía.
+try:
+    shell32 = ctypes.windll.shell32
+    shell32.SHQueryUserNotificationState.argtypes = [ctypes.POINTER(ctypes.c_int)]
+    shell32.SHQueryUserNotificationState.restype = ctypes.c_long  # HRESULT
+except Exception:
+    shell32 = None
+
+QUNS_BUSY = 2                     # app a pantalla completa (p.ej. juego)
+QUNS_RUNNING_D3D_FULL_SCREEN = 3  # juego D3D a pantalla completa
+QUNS_PRESENTATION_MODE = 4        # modo presentación
+
+
+def _shell_says_fullscreen():
+    # OJO: NO usamos QUNS_BUSY (2): tras salir de un vídeo a pantalla completa
+    # Windows lo mantiene ~5 s (histéresis), lo que retrasaba la reaparición del
+    # widget. El vídeo en navegador/reproductor ya lo detecta el chequeo por rect
+    # (instantáneo en ambos sentidos); el shell solo aporta el caso de juegos con
+    # D3D exclusivo, que no arrastra esa inercia.
+    if not shell32:
+        return False
+    try:
+        state = ctypes.c_int(0)
+        if shell32.SHQueryUserNotificationState(ctypes.byref(state)) == 0:  # S_OK
+            return state.value in (QUNS_RUNNING_D3D_FULL_SCREEN, QUNS_PRESENTATION_MODE)
+    except Exception:
+        pass
+    return False
+
+
 def is_fullscreen_active():
-    """True si la ventana en primer plano ocupa TODO el monitor (peli/juego a
-    pantalla completa). No cuenta el escritorio, la shell ni ventanas maximizadas
-    normales (esas respetan el área de trabajo y dejan ver la barra)."""
+    """True si hay algo a pantalla completa (peli/juego) y el widget debe
+    esconderse. Combina la API del shell (fiable para vídeo/juegos, sin depender
+    del foco) con un chequeo por rect de la ventana en primer plano."""
+    if _shell_says_fullscreen():
+        return True
     fg = user32.GetForegroundWindow()
     if not fg:
         return False
@@ -229,7 +267,7 @@ class Bar(tk.Tk):
         self.hwnd = user32.GetAncestor(self.winfo_id(), GA_ROOT)
         self._hidden = False
         self._reposition()
-        self.after(700, self._keep)
+        self.after(350, self._keep)
 
     def _reposition(self):
         bar = taskbar_hwnd()
@@ -252,17 +290,20 @@ class Bar(tk.Tk):
 
     def _keep(self):
         # ocultar sobre apps a pantalla completa (pelis, juegos); si no,
-        # re-elevar por encima de la barra y recolocar (la barra es topmost)
+        # re-elevar por encima de la barra y recolocar (la barra es topmost).
+        # Usamos ShowWindow(Win32) en vez de withdraw()/deiconify() de tkinter:
+        # con overrideredirect, withdraw() deja de ocultar de forma fiable tras
+        # el primer deiconify(), y el widget reaparecía sobre el vídeo al volver.
         if is_fullscreen_active():
             if not self._hidden:
-                self.withdraw()
+                user32.ShowWindow(self.hwnd, SW_HIDE)
                 self._hidden = True
         else:
             if self._hidden:
-                self.deiconify()
+                user32.ShowWindow(self.hwnd, SW_SHOWNA)
                 self._hidden = False
             self._reposition()
-        self.after(700, self._keep)
+        self.after(350, self._keep)
 
     # ---- datos ----
     def refresh(self):
